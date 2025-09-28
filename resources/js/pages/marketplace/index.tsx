@@ -1,7 +1,15 @@
 import { offersApi } from '@/api';
+import EditItem from '@/components/edit-create-modal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import {
     Select,
@@ -18,11 +26,11 @@ import {
     Filter,
     Heart,
     MapPin,
-    Package,
     Search,
     ShoppingCart,
     Sparkles,
     Star,
+    Trash,
     TrendingUp,
     Truck,
 } from 'lucide-react';
@@ -37,6 +45,7 @@ export default function Index() {
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [selectedCondition, setSelectedCondition] = useState('all');
     const [favorites, setFavorites] = useState<Set<number>>(new Set());
+    const [openDeleteModal, setOpenDeleteModal] = useState<number | null>(null);
 
     // Llamada a la API
     useEffect(() => {
@@ -177,7 +186,7 @@ export default function Index() {
                                         <Sparkles className="text-sunset-primary h-6 w-6" />
                                     </div>
                                     <h1 className="bg-gradient-to-r from-primary via-accent to-chart-3 bg-clip-text text-5xl font-bold text-balance text-transparent">
-                                        Sunset Marketplace
+                                        Offer Marketplace
                                     </h1>
                                 </div>
                                 <p className="max-w-2xl text-xl font-medium text-pretty text-muted-foreground">
@@ -186,10 +195,7 @@ export default function Index() {
                                 </p>
                             </div>
                             <div className="flex items-center gap-4">
-                                <Button className="cursor-pointer text-sm font-semibold">
-                                    <Package className="mr-2 h-5 w-5" />
-                                    Create Offer
-                                </Button>
+                                <EditItem />
                                 <Badge
                                     variant="secondary"
                                     className="border-accent/20 bg-accent/10 px-4 py-2 text-sm font-semibold text-accent"
@@ -284,9 +290,6 @@ export default function Index() {
                             <Card
                                 key={product.id}
                                 className="card-hover group relative cursor-pointer overflow-hidden border-border/30 bg-card/90 backdrop-blur-sm"
-                                onClick={() =>
-                                    router.visit(`/marketplace/${product.id}`)
-                                } // Navigate to product detail page
                             >
                                 <div className="bg-sunset-glow absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"></div>
                                 <div className="relative">
@@ -302,26 +305,150 @@ export default function Index() {
                                                 -{product.discount}%
                                             </Badge>
                                         )}
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className={`absolute top-4 right-4 backdrop-blur-md transition-all duration-300 ${
-                                                isFavorite
-                                                    ? 'scale-110 bg-destructive/20 text-destructive hover:bg-destructive/30'
-                                                    : 'bg-background/20 text-foreground hover:scale-110 hover:bg-background/40'
-                                            }`}
-                                            onClick={(e) =>
-                                                toggleFavorite(product.id, e)
-                                            }
-                                        >
-                                            <Heart
-                                                className={`h-5 w-5 ${isFavorite ? 'fill-current' : ''}`}
-                                            />
-                                        </Button>
+                                        <div className="absolute top-4 right-4 flex gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className={`cursor-pointer backdrop-blur-md transition-all duration-300 ${
+                                                    isFavorite
+                                                        ? 'scale-110 bg-destructive/20 text-destructive hover:bg-destructive/30'
+                                                        : 'bg-background/20 text-foreground hover:scale-110 hover:bg-background/40'
+                                                }`}
+                                                onClick={(e) =>
+                                                    toggleFavorite(
+                                                        product.id,
+                                                        e,
+                                                    )
+                                                }
+                                            >
+                                                <Heart
+                                                    className={`h-5 w-5 ${
+                                                        isFavorite
+                                                            ? 'fill-current'
+                                                            : ''
+                                                    }`}
+                                                />
+                                            </Button>
+                                            {product.isOwner && (
+                                                <>
+                                                    <EditItem
+                                                        item={{
+                                                            id: product.id.toString(),
+                                                            title: product.name,
+                                                            price: product.price,
+                                                            category:
+                                                                product.category,
+                                                            condition:
+                                                                product.condition,
+                                                            description:
+                                                                product.description,
+                                                            location:
+                                                                product.location,
+                                                            images: [
+                                                                product.image,
+                                                            ],
+                                                            discount:
+                                                                product.discount ||
+                                                                0,
+                                                            categoryId:
+                                                                product.categoryId,
+                                                        }}
+                                                        onSuccess={() => {
+                                                            // Refresh the items list or show success message
+                                                            toast.success(
+                                                                'Product updated successfully!',
+                                                            );
+                                                        }}
+                                                    />
+                                                    {/* Botón de eliminar */}
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="cursor-pointer bg-background/20 text-destructive backdrop-blur-md transition-all duration-300 hover:bg-destructive/20"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setOpenDeleteModal(
+                                                                product.id,
+                                                            );
+                                                        }}
+                                                    >
+                                                        <Trash className="h-5 w-5" />
+                                                    </Button>
+
+                                                    {/* Modal de confirmación */}
+                                                    <Dialog
+                                                        open={
+                                                            openDeleteModal ===
+                                                            product.id
+                                                        }
+                                                        onOpenChange={() =>
+                                                            setOpenDeleteModal(
+                                                                null,
+                                                            )
+                                                        }
+                                                    >
+                                                        <DialogContent>
+                                                            <DialogHeader>
+                                                                <DialogTitle>
+                                                                    Confirm
+                                                                    Deletion
+                                                                </DialogTitle>
+                                                                <DialogDescription>
+                                                                    Are you sure
+                                                                    you want to
+                                                                    delete{' '}
+                                                                    <b className="font-semibold text-primary">
+                                                                        {
+                                                                            product.name
+                                                                        }
+                                                                    </b>
+                                                                    ? This
+                                                                    action
+                                                                    cannot be
+                                                                    undone.
+                                                                </DialogDescription>
+                                                            </DialogHeader>
+                                                            <div className="flex gap-2 pt-4">
+                                                                <Button
+                                                                    variant="outline"
+                                                                    onClick={() =>
+                                                                        setOpenDeleteModal(
+                                                                            null,
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    Cancel
+                                                                </Button>
+                                                                <Button
+                                                                    variant="destructive"
+                                                                    onClick={() => {
+                                                                        deleteOffer(
+                                                                            product.id,
+                                                                        );
+                                                                        setOpenDeleteModal(
+                                                                            null,
+                                                                        );
+                                                                    }}
+                                                                >
+                                                                    Delete
+                                                                </Button>
+                                                            </div>
+                                                        </DialogContent>
+                                                    </Dialog>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
 
-                                <CardContent className="relative space-y-4 p-6">
+                                <CardContent
+                                    className="relative space-y-4 p-6"
+                                    onClick={() =>
+                                        router.visit(
+                                            `/marketplace/${product.id}`,
+                                        )
+                                    }
+                                >
                                     <div className="space-y-3">
                                         <div className="flex items-start justify-between gap-3">
                                             <h3 className="group-hover:text-sunset-primary text-xl leading-tight font-bold text-balance text-foreground transition-colors duration-300">
